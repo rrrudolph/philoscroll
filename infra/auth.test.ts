@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Script } from "node:vm";
 import { describe, expect, it } from "vitest";
-import { themes } from "../src/tokens";
+import { theme } from "../src/tokens";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -99,14 +99,11 @@ describe("phone link gate", () => {
     expect(result.headers["content-type"]?.value).toContain("text/html");
     expect(result.body).toContain("This scroll is private.");
     expect(result.body).toContain('name="viewport"');
-    expect(result.body).toContain("prefers-color-scheme:dark");
+    expect(result.body).not.toContain("prefers-color-scheme");
     expect(result.headers["set-cookie"]).toBeUndefined();
 
     const colors = painted(result.body ?? "");
-    expect(colors).toEqual([
-      { background: themes.light.bg, color: themes.light.text },
-      { background: themes.dark.bg, color: themes.dark.text },
-    ]);
+    expect(colors).toEqual([{ background: theme.bg, color: theme.text }]);
     for (const pair of colors) {
       expect(contrastRatio(pair.color, pair.background)).toBeGreaterThanOrEqual(4.5);
     }

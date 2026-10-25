@@ -1,26 +1,18 @@
 import { QuoteDeck } from "./deck";
 import { fitQuoteFont } from "./fit";
 import { dragOffset, swipeDirection, swipeOpacity } from "./gesture";
-import { applyTheme, themeFromPreference } from "./theme";
+import { applyTheme } from "./theme";
 import type { Quote } from "./types";
 
 export type MountOptions = {
   quotes: readonly Quote[];
   random?: () => number;
-  prefersDark?: boolean;
 };
 
 export function mount(root: HTMLElement, options: MountOptions): void {
   const quotes = options.quotes;
   const random = options.random ?? Math.random;
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
-  applyTheme(themeFromPreference(options.prefersDark ?? media.matches));
-
-  if (options.prefersDark === undefined) {
-    media.addEventListener("change", (event) => {
-      applyTheme(themeFromPreference(event.matches));
-    });
-  }
+  applyTheme();
 
   root.replaceChildren();
   if (quotes.length === 0) return;

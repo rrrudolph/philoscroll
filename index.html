@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#FDFBF7" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#121824" />
     <meta name="robots" content="noindex" />
     <meta name="description" content="A quiet scroll of short teachings from the Philokalia." />
     <title>Philokalia</title>
@@ -14,10 +14,6 @@
     />
     <style>
       html {
-        background: #FDFBF7;
-        color: #1F2937;
-      }
-      html[data-theme="dark"] {
         background: #121824;
         color: #E5E7EB;
       }
@@ -32,13 +28,7 @@
       }
     </style>
     <script>
-      (function () {
-        var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var theme = dark ? "dark" : "light";
-        document.documentElement.setAttribute("data-theme", theme);
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "dark" ? "#121824" : "#FDFBF7");
-      })();
+      document.documentElement.setAttribute("data-theme", "dark");
     </script>
   </head>
   <body>

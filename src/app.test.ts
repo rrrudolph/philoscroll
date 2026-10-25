@@ -9,7 +9,7 @@ const css = readFileSync(join(process.cwd(), "src", "styles.css"), "utf8");
 
 const quotes = loadQuotes(raw);
 
-function render(prefersDark = false) {
+function render() {
   if (!document.head.querySelector("style[data-app-css]")) {
     const style = document.createElement("style");
     style.dataset.appCss = "true";
@@ -18,7 +18,7 @@ function render(prefersDark = false) {
   }
   const root = document.createElement("div");
   document.body.append(root);
-  mount(root, { quotes, prefersDark, random: () => 0.42 });
+  mount(root, { quotes, random: () => 0.42 });
   return root;
 }
 
@@ -42,16 +42,16 @@ describe("the scroll", () => {
     expect(quotes.some((quote) => quote.author === author?.textContent)).toBe(true);
   });
 
-  it("follows the system appearance and does not offer a switch", () => {
-    const root = render(true);
+  it("stays dark regardless of system appearance and does not offer a switch", () => {
+    const root = render();
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#121824");
     expect(root.querySelector("[data-action='theme']")).toBeNull();
+    expect(root.querySelector("button")).toBeNull();
 
-    document.body.innerHTML = "";
-    const light = render(false);
-    expect(document.documentElement.dataset.theme).toBe("light");
-    expect(light.querySelector("button")).toBeNull();
+    const styles = getComputedStyle(document.documentElement);
+    expect(styles.getPropertyValue("--bg").trim()).toBe("#121824");
+    expect(styles.getPropertyValue("--text").trim()).toBe("#E5E7EB");
   });
 
   it("changes the teaching only when the page is swiped", () => {
