@@ -25,6 +25,17 @@ describe("teachings", () => {
     }
   });
 
+  it("rejects two teachings with the same words", () => {
+    const first = quotes[0];
+    if (!first) throw new Error("expected a teaching");
+    expect(() =>
+      loadQuotes([
+        { id: 1, text: first.text, author: first.author },
+        { id: 2, text: first.text, author: first.author },
+      ]),
+    ).toThrow(/words/);
+  });
+
   it("rejects a teaching that is missing its words or its author", () => {
     expect(() => loadQuotes([{ id: 1, text: "A line with enough words to count.", author: "" }])).toThrow(
       /teachings/,

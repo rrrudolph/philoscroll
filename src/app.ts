@@ -9,6 +9,20 @@ export type MountOptions = {
   random?: () => number;
 };
 
+/** How far the two teachings travel together: past the text, and never off the card. */
+export function handoffTravel(blockHeight: number, cardHeight: number): number {
+  const card = cardHeight > 0 ? cardHeight : 320;
+  const distance = blockHeight > 0 ? blockHeight + 64 : card * 0.34;
+  return Math.round(Math.min(Math.max(distance, 96), card));
+}
+
+type QuoteCard = {
+  article: HTMLElement;
+  block: HTMLElement;
+  text: HTMLElement;
+  author: HTMLElement;
+};
+
 export function mount(root: HTMLElement, options: MountOptions): void {
   const quotes = options.quotes;
   const random = options.random ?? Math.random;
@@ -18,22 +32,15 @@ export function mount(root: HTMLElement, options: MountOptions): void {
   if (quotes.length === 0) return;
 
   const feed = document.createElement("main");
-  const article = document.createElement("article");
-  article.className = "quote is-visible";
-
-  const block = document.createElement("blockquote");
-  const text = document.createElement("p");
-  text.className = "quote-text";
-  const author = document.createElement("cite");
-  author.className = "quote-author";
-  block.append(text, author);
-  article.append(block);
-  feed.append(article);
   root.append(feed);
 
   const deck = new QuoteDeck(quotes, random);
   const seen: Quote[] = [];
   let index = 0;
+  let current = createCard();
+  feed.append(current.article);
+  let neighbor: QuoteCard | null = null;
+  let held: Quote | null = null;
   let drag: { pointerId: number; originY: number; originT: number } | null = null;
   let settleToken = 0;
 
@@ -46,7 +53,13 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  function fitQuote(): void {
+  function travelPx(element: HTMLElement): number {
+    const block = element.querySelector("blockquote")?.getBoundingClientRect().height ?? 0;
+    return handoffTravel(block, element.clientHeight);
+  }
+
+  function fitCard(card: QuoteCard): void {
+    const { article, block, text } = card;
     if (!article.isConnected) return;
     const styles = getComputedStyle(article);
     const available = article.clientHeight - lengthPx(styles.paddingTop) - lengthPx(styles.paddingBottom);
@@ -64,47 +77,199 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     text.dataset.fontPx = String(size);
   }
 
-  function show(quote: Quote): void {
-    article.dataset.quoteId = quote.id;
-    text.textContent = quote.text;
-    author.textContent = quote.author;
-    article.classList.add("is-visible");
-    fitQuote();
+  function paint(card: QuoteCard, quote: Quote): void {
+    card.article.dataset.quoteId = quote.id;
+    card.text.textContent = quote.text;
+    card.author.textContent = quote.author;
+  }
+
+  function show(card: QuoteCard, quote: Quote): void {
+    paint(card, quote);
+    card.article.classList.add("is-visible");
+    fitCard(card);
   }
 
   function canFollow(deltaY: number): boolean {
     return deltaY < 0 || index > 0;
   }
 
-  function go(direction: 1 | -1): void {
+  function quoteAhead(direction: 1 | -1): Quote | null {
     const nextIndex = index + direction;
-    if (nextIndex < 0) return;
+    if (nextIndex < 0) return null;
+    if (nextIndex < seen.length) return seen[nextIndex] ?? null;
+    if (direction < 0) return null;
+    if (!held) held = deck.draw();
+    return held;
+  }
+
+  function advance(direction: 1 | -1): Quote | null {
+    const nextIndex = index + direction;
+    if (nextIndex < 0) return null;
     if (nextIndex < seen.length) {
+      const quote = seen[nextIndex];
+      if (!quote) return null;
       index = nextIndex;
-      const quote = seen[index];
-      if (quote) show(quote);
-      return;
+      return quote;
     }
-    const quote = deck.draw();
-    if (!quote) return;
+    const quote = held ?? deck.draw();
+    held = null;
+    if (!quote) return null;
     seen.push(quote);
     index = seen.length - 1;
-    show(quote);
+    return quote;
+  }
+
+  function dropNeighbor(): void {
+    neighbor?.article.remove();
+    neighbor = null;
+  }
+
+  function dismissNeighbor(): void {
+    const card = neighbor;
+    if (!card) return;
+    neighbor = null;
+    const el = card.article;
+    const away = translateY(el) >= 0 ? travelPx(current.article) : -travelPx(current.article);
+    el.classList.remove("is-visible");
+    el.classList.add("is-leaving", "is-handoff");
+    el.setAttribute("aria-hidden", "true");
+    el.style.transition = "";
+    void el.offsetWidth;
+    el.style.opacity = "0";
+    el.style.transform = `translate3d(0, ${away}px, 0)`;
+    const remove = () => el.remove();
+    el.addEventListener("transitionend", remove, { once: true });
+    window.setTimeout(remove, transitionMs(el) + 80);
+  }
+
+  function followNeighbor(offset: number, deltaY: number): void {
+    if (reduceMotion() || deltaY === 0 || !canFollow(deltaY)) {
+      dropNeighbor();
+      return;
+    }
+    const direction: 1 | -1 = deltaY < 0 ? 1 : -1;
+    const quote = quoteAhead(direction);
+    if (!quote) {
+      dropNeighbor();
+      return;
+    }
+    if (!neighbor || neighbor.article.dataset.quoteId !== quote.id) {
+      dropNeighbor();
+      neighbor = createCard();
+      paint(neighbor, quote);
+      neighbor.article.classList.add("is-visible");
+      neighbor.article.setAttribute("aria-hidden", "true");
+      feed.append(neighbor.article);
+      fitCard(neighbor);
+    }
+    const y = offset + direction * travelPx(current.article);
+    neighbor.article.style.transition = "none";
+    neighbor.article.style.transform = `translate3d(0, ${y}px, 0)`;
+    neighbor.article.style.opacity = String(1 - swipeOpacity(offset));
   }
 
   function track(deltaY: number): void {
+    const card = current.article;
     const offset = dragOffset(deltaY, canFollow(deltaY));
-    article.classList.add("is-dragging");
-    article.style.transition = "none";
-    article.style.transform = `translate3d(0, ${offset}px, 0)`;
-    article.style.opacity = String(swipeOpacity(offset));
+    card.classList.add("is-dragging");
+    card.style.transition = "none";
+    card.style.transform = `translate3d(0, ${offset}px, 0)`;
+    card.style.opacity = String(swipeOpacity(offset));
+    followNeighbor(offset, deltaY);
   }
 
   function releaseFinger(): void {
-    article.classList.remove("is-dragging");
-    article.style.transition = "";
-    article.style.transform = "";
-    article.style.opacity = "";
+    const card = current.article;
+    card.classList.remove("is-dragging", "is-handoff");
+    card.style.transition = "";
+    card.style.transform = "";
+    card.style.opacity = "";
+  }
+
+  function snapHandoff(): void {
+    settleToken += 1;
+    dropNeighbor();
+    for (const node of feed.querySelectorAll(".quote.is-leaving")) node.remove();
+    const card = current.article;
+    card.classList.add("is-visible");
+    card.classList.remove("is-dragging", "is-handoff", "is-leaving");
+    card.removeAttribute("aria-hidden");
+    card.style.transition = "none";
+    card.style.opacity = "";
+    card.style.transform = "";
+  }
+
+  function beginHandoff(direction: 1 | -1, quote: Quote): void {
+    const leaving = current;
+    const travel = travelPx(leaving.article);
+    const dragY = translateY(leaving.article);
+    const enterY = dragY + direction * travel;
+    const exitY = direction === 1 ? Math.min(dragY, -travel) : Math.max(dragY, travel);
+
+    let arriving = neighbor && neighbor.article.dataset.quoteId === quote.id ? neighbor : null;
+    neighbor = null;
+    if (!arriving) {
+      arriving = createCard();
+      paint(arriving, quote);
+      arriving.article.classList.add("is-visible");
+      arriving.article.style.transition = "none";
+      arriving.article.style.opacity = "0";
+      arriving.article.style.transform = `translate3d(0, ${enterY}px, 0)`;
+      feed.append(arriving.article);
+      fitCard(arriving);
+    } else {
+      arriving.article.style.transition = "none";
+      arriving.article.removeAttribute("aria-hidden");
+    }
+
+    leaving.article.style.transition = "none";
+    leaving.article.style.transform = `translate3d(0, ${dragY}px, 0)`;
+    if (leaving.article.style.opacity === "") leaving.article.style.opacity = "1";
+    leaving.article.classList.remove("is-visible");
+    leaving.article.classList.add("is-leaving");
+    leaving.article.setAttribute("aria-hidden", "true");
+
+    current = arriving;
+
+    const token = ++settleToken;
+    requestAnimationFrame(() => {
+      if (token !== settleToken) return;
+      armHandoff(leaving.article, arriving.article, exitY, token);
+    });
+  }
+
+  function armHandoff(leavingEl: HTMLElement, arrivingEl: HTMLElement, exitY: number, token: number): void {
+    if (token !== settleToken || !leavingEl.isConnected) return;
+    leavingEl.classList.remove("is-dragging");
+    leavingEl.classList.add("is-handoff");
+    arrivingEl.classList.add("is-handoff");
+    leavingEl.style.transition = "";
+    arrivingEl.style.transition = "";
+    void leavingEl.offsetWidth;
+    void arrivingEl.offsetWidth;
+    if (token !== settleToken) return;
+    leavingEl.style.opacity = "0";
+    leavingEl.style.transform = `translate3d(0, ${exitY}px, 0)`;
+    arrivingEl.style.opacity = "";
+    arrivingEl.style.transform = "";
+
+    let finished = false;
+    const finish = () => {
+      if (finished || token !== settleToken) return;
+      finished = true;
+      window.clearTimeout(timer);
+      leavingEl.removeEventListener("transitionend", onEnd);
+      leavingEl.remove();
+      arrivingEl.classList.remove("is-handoff");
+    };
+    const onEnd = (event: Event) => {
+      if (event.target !== leavingEl) return;
+      const name = (event as TransitionEvent).propertyName;
+      if (name && name !== "opacity" && name !== "transform") return;
+      finish();
+    };
+    leavingEl.addEventListener("transitionend", onEnd);
+    const timer = window.setTimeout(finish, transitionMs(leavingEl) + 80);
   }
 
   function settle(deltaY: number, elapsedMs: number): void {
@@ -112,39 +277,38 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     drag = null;
     if (direction === null || reduceMotion()) {
       releaseFinger();
-      if (direction) go(direction);
+      if (reduceMotion()) dropNeighbor();
+      else dismissNeighbor();
+      if (direction) {
+        const quote = advance(direction);
+        if (quote) show(current, quote);
+      }
       return;
     }
-    const token = ++settleToken;
-    article.classList.add("is-dragging");
-    article.style.transition = "none";
-    article.style.opacity = "0";
-    article.style.transform = "translate3d(0, 12px, 0)";
-    go(direction);
-    requestAnimationFrame(() => {
-      if (token !== settleToken) return;
-      article.classList.remove("is-dragging");
-      article.style.transition = "";
-      article.style.opacity = "";
-      article.style.transform = "";
-    });
+    const quote = advance(direction);
+    if (!quote) {
+      releaseFinger();
+      dropNeighbor();
+      return;
+    }
+    beginHandoff(direction, quote);
   }
 
   const first = deck.draw();
   if (!first) return;
   seen.push(first);
-  show(first);
+  show(current, first);
 
   if (typeof ResizeObserver === "function") {
-    const observer = new ResizeObserver(() => fitQuote());
-    observer.observe(article);
+    const observer = new ResizeObserver(() => fitCard(current));
+    observer.observe(feed);
   }
   const fonts = document.fonts;
-  if (fonts) void fonts.ready.then(() => fitQuote());
+  if (fonts) void fonts.ready.then(() => fitCard(current));
 
   feed.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    settleToken += 1;
+    snapHandoff();
     drag = { pointerId: event.pointerId, originY: event.clientY, originT: event.timeStamp };
     if (typeof feed.setPointerCapture === "function") {
       try {
@@ -172,6 +336,7 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     drag = null;
     settleToken += 1;
     releaseFinger();
+    dismissNeighbor();
   });
 
   feed.addEventListener(
@@ -181,4 +346,29 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     },
     { passive: false },
   );
+}
+
+function createCard(): QuoteCard {
+  const article = document.createElement("article");
+  article.className = "quote";
+  const block = document.createElement("blockquote");
+  const text = document.createElement("p");
+  text.className = "quote-text";
+  const author = document.createElement("cite");
+  author.className = "quote-author";
+  block.append(text, author);
+  article.append(block);
+  return { article, block, text, author };
+}
+
+function translateY(element: HTMLElement): number {
+  const match = /translate3d\(\s*0(?:px)?,\s*(-?\d+(?:\.\d+)?)px/.exec(element.style.transform);
+  return match?.[1] ? Number(match[1]) : 0;
+}
+
+function transitionMs(element: HTMLElement): number {
+  const raw = getComputedStyle(element).transitionDuration.split(",")[0]?.trim() ?? "";
+  const amount = parseFloat(raw);
+  if (!Number.isFinite(amount) || amount <= 0) return 440;
+  return raw.endsWith("ms") ? amount : amount * 1000;
 }

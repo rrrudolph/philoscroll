@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import raw from "../data.json";
-import { mount } from "./app";
+import { handoffTravel, mount } from "./app";
 import { loadQuotes } from "./quotes";
 
 const css = readFileSync(join(process.cwd(), "src", "styles.css"), "utf8");
@@ -57,7 +57,7 @@ describe("the scroll", () => {
   it("changes the teaching only when the page is swiped", () => {
     const root = render();
     const feed = root.querySelector("main");
-    const text = () => root.querySelector(".quote-text")?.textContent;
+    const text = () => root.querySelector(".quote.is-visible .quote-text")?.textContent;
     const first = text();
     expect(root.querySelectorAll(".quote").length).toBe(1);
 
@@ -115,7 +115,139 @@ describe("the scroll", () => {
     expect(settle).toBeGreaterThan(0);
     expect(settle).toBeLessThanOrEqual(0.18);
   });
+
+  it("slides the next line in while the last one slides out", async () => {
+    const root = render();
+    const feed = root.querySelector("main");
+    const first = visibleText(root);
+    swipe(feed, 300, 120);
+
+    const leaving = root.querySelector(".quote.is-leaving") as HTMLElement;
+    const arriving = root.querySelector(".quote.is-visible") as HTMLElement;
+    const leaveStart = shiftY(leaving);
+    const enter = shiftY(arriving);
+    const travel = cardTravel(leaving);
+    expect(travel).toBeGreaterThan(12);
+    expect(leaving.clientHeight === 0 || travel <= leaving.clientHeight).toBe(true);
+    expect(leaving.querySelector(".quote-text")?.textContent).toBe(first);
+    expect(arriving.querySelector(".quote-text")?.textContent).not.toBe(first);
+    expect(enter - leaveStart).toBe(travel);
+    expect(Number(leaving.style.opacity)).toBe(1);
+    expect(Number(arriving.style.opacity)).toBe(0);
+    expect(root.querySelectorAll(".quote")).toHaveLength(2);
+
+    await nextFrame();
+
+    const exit = shiftY(leaving);
+    expect(exit).toBe(leaveStart - travel);
+    expect(Number(leaving.style.opacity)).toBe(0);
+    expect(arriving.style.opacity).toBe("");
+    expect(arriving.classList.contains("is-visible")).toBe(true);
+    expect(leaving.isConnected && arriving.isConnected).toBe(true);
+    const handoff = longestTransitionSeconds(getComputedStyle(leaving).transitionDuration);
+    expect(handoff).toBeGreaterThan(0.18);
+
+    leaving.dispatchEvent(new TransitionEvent("transitionend", { propertyName: "opacity", bubbles: true }));
+    expect(root.querySelectorAll(".quote")).toHaveLength(1);
+    expect(visibleText(root)).not.toBe(first);
+
+    swipe(feed, 80, 220);
+    const leavingBack = root.querySelector(".quote.is-leaving") as HTMLElement;
+    const arrivingBack = root.querySelector(".quote.is-visible") as HTMLElement;
+    const backStart = shiftY(leavingBack);
+    const backEnter = shiftY(arrivingBack);
+    const backTravel = cardTravel(leavingBack);
+    expect(arrivingBack.querySelector(".quote-text")?.textContent).toBe(first);
+    expect(backStart - backEnter).toBe(backTravel);
+    expect(Number(arrivingBack.style.opacity)).toBe(0);
+    expect(Number(leavingBack.style.opacity)).toBe(1);
+
+    await nextFrame();
+    expect(shiftY(leavingBack)).toBe(backStart + backTravel);
+    expect(Number(leavingBack.style.opacity)).toBe(0);
+    expect(arrivingBack.isConnected).toBe(true);
+  });
+
+  it("fades the next line in while the finger is still carrying the last one out", async () => {
+    const root = render();
+    const feed = root.querySelector("main");
+    feed?.dispatchEvent(pointer("pointerdown", 400));
+    feed?.dispatchEvent(pointer("pointermove", 320));
+
+    const cards = [...root.querySelectorAll(".quote")] as HTMLElement[];
+    const [current, preview] = cards;
+    expect(cards).toHaveLength(2);
+    const travel = cardTravel(current!);
+    expect(shiftY(current!)).toBe(-80);
+    expect(shiftY(preview!) - shiftY(current!)).toBe(travel);
+    expect(Number(current!.style.opacity)).toBeCloseTo(1 - 80 / 120, 5);
+    expect(Number(preview!.style.opacity)).toBeCloseTo(80 / 120, 5);
+
+    feed?.dispatchEvent(pointer("pointerup", 320));
+    const leaving = root.querySelector(".quote.is-leaving") as HTMLElement;
+    const arriving = root.querySelector(".quote.is-visible") as HTMLElement;
+    expect(shiftY(arriving) - shiftY(leaving)).toBe(travel);
+    expect(Number(arriving.style.opacity)).toBeCloseTo(80 / 120, 5);
+
+    await nextFrame();
+    expect(shiftY(leaving)).toBe(Math.min(-80, -travel));
+    expect(shiftY(leaving)).toBeLessThanOrEqual(-80);
+    expect(Number(leaving.style.opacity)).toBe(0);
+    expect(arriving.isConnected && leaving.isConnected).toBe(true);
+  });
+
+  it("replaces the line in place when motion is reduced", () => {
+    const root = render();
+    const restore = mockReducedMotion(true);
+    try {
+      const feed = root.querySelector("main");
+      const first = visibleText(root);
+      swipe(feed, 300, 120);
+      expect(root.querySelectorAll(".quote")).toHaveLength(1);
+      expect(visibleText(root)).not.toBe(first);
+      expect((root.querySelector(".quote") as HTMLElement).style.transform).toBe("");
+    } finally {
+      restore();
+    }
+  });
 });
+
+function visibleText(root: ParentNode): string | null | undefined {
+  return root.querySelector(".quote.is-visible .quote-text")?.textContent;
+}
+
+function cardTravel(card: HTMLElement): number {
+  const block = card.querySelector("blockquote")?.getBoundingClientRect().height ?? 0;
+  return handoffTravel(block, card.clientHeight);
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+function mockReducedMotion(matches: boolean): () => void {
+  const original = window.matchMedia.bind(window);
+  window.matchMedia = (query: string) => {
+    if (query.includes("prefers-reduced-motion")) {
+      return {
+        matches,
+        media: query,
+        onchange: null,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent: () => false,
+      } as MediaQueryList;
+    }
+    return original(query);
+  };
+  return () => {
+    window.matchMedia = original;
+  };
+}
 
 function pointer(type: string, clientY: number) {
   return new PointerEvent(type, { bubbles: true, clientY, pointerId: 1 });

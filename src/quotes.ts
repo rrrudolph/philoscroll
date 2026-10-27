@@ -13,6 +13,10 @@ export function loadQuotes(data: unknown): Quote[] {
   if (ids.size !== quotes.length) {
     throw new Error("Each teaching needs its own id.");
   }
+  const bodies = new Set(quotes.map((quote) => `${quote.text}\0${quote.author}`));
+  if (bodies.size !== quotes.length) {
+    throw new Error("Each teaching needs its own words.");
+  }
   return quotes;
 }
 
