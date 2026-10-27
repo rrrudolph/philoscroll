@@ -1,12 +1,20 @@
-import { QuoteDeck } from "./deck";
+import { QuoteDeck, resumeDeck } from "./deck";
 import { fitQuoteFont } from "./fit";
 import { dragOffset, swipeDirection, swipeOpacity } from "./gesture";
+import {
+  loadScroll,
+  quotesFromIds,
+  saveScroll,
+  scrollPoolKey,
+  storageForMount,
+} from "./session";
 import { applyTheme } from "./theme";
 import type { Quote } from "./types";
 
 export type MountOptions = {
   quotes: readonly Quote[];
   random?: () => number;
+  storage?: Storage;
 };
 
 /** How far the two teachings travel together: past the text, and never off the card. */
@@ -34,9 +42,40 @@ export function mount(root: HTMLElement, options: MountOptions): void {
   const feed = document.createElement("main");
   root.append(feed);
 
-  const deck = new QuoteDeck(quotes, random);
-  const seen: Quote[] = [];
+  const storage = options.storage ?? storageForMount();
+  const poolKey = scrollPoolKey(quotes);
+  const stored = loadScroll(poolKey, storage);
+  let deck: QuoteDeck;
+  let seen: Quote[] = [];
   let index = 0;
+
+  const restoredSeen = stored ? quotesFromIds(quotes, stored.seenIds) : null;
+  const resumed =
+    stored && restoredSeen
+      ? resumeDeck(quotes, random, stored.queueIds, stored.lastId)
+      : null;
+  if (stored && restoredSeen && resumed) {
+    deck = resumed;
+    seen = restoredSeen;
+    index = stored.index;
+  } else {
+    deck = new QuoteDeck(quotes, random);
+  }
+
+  function persist(): void {
+    const currentQuote = seen[index];
+    if (!currentQuote) return;
+    saveScroll(
+      {
+        v: 1,
+        pool: poolKey,
+        ...deck.snapshot(),
+        seenIds: seen.map((quote) => quote.id),
+        index,
+      },
+      storage,
+    );
+  }
   let current = createCard();
   feed.append(current.article);
   let neighbor: QuoteCard | null = null;
@@ -109,6 +148,7 @@ export function mount(root: HTMLElement, options: MountOptions): void {
       const quote = seen[nextIndex];
       if (!quote) return null;
       index = nextIndex;
+      persist();
       return quote;
     }
     const quote = held ?? deck.draw();
@@ -116,6 +156,7 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     if (!quote) return null;
     seen.push(quote);
     index = seen.length - 1;
+    persist();
     return quote;
   }
 
@@ -294,10 +335,16 @@ export function mount(root: HTMLElement, options: MountOptions): void {
     beginHandoff(direction, quote);
   }
 
-  const first = deck.draw();
-  if (!first) return;
-  seen.push(first);
-  show(current, first);
+  if (seen.length === 0) {
+    const first = deck.draw();
+    if (!first) return;
+    seen.push(first);
+    index = 0;
+  }
+  const active = seen[index];
+  if (!active) return;
+  show(current, active);
+  persist();
 
   if (typeof ResizeObserver === "function") {
     const observer = new ResizeObserver(() => fitCard(current));

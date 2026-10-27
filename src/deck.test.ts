@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import raw from "../data.json";
-import { QuoteDeck } from "./deck";
+import { QuoteDeck, resumeDeck } from "./deck";
 import { loadQuotes } from "./quotes";
 
 const quotes = loadQuotes(raw);
@@ -38,5 +38,14 @@ describe("quote deck", () => {
 
   it("returns nothing when there are no teachings", () => {
     expect(new QuoteDeck([]).draw()).toBeNull();
+  });
+
+  it("resumes the remaining shuffle after a snapshot", () => {
+    const deck = new QuoteDeck(quotes, mulberry32(4));
+    for (let i = 0; i < 12; i += 1) deck.draw();
+    const snap = deck.snapshot();
+    const resumed = resumeDeck(quotes, mulberry32(99), snap.queueIds, snap.lastId);
+    if (!resumed) throw new Error("expected a resumed deck");
+    expect(resumed.draw()?.id).toBe(deck.draw()?.id);
   });
 });

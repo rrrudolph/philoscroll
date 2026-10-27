@@ -11,6 +11,11 @@ export function shuffle<T>(items: readonly T[], random: () => number): T[] {
   return copy;
 }
 
+export type DeckResume = {
+  queue: Quote[];
+  lastId?: string;
+};
+
 export class QuoteDeck {
   private queue: Quote[] = [];
   private lastId: string | undefined;
@@ -18,8 +23,18 @@ export class QuoteDeck {
   constructor(
     private readonly pool: readonly Quote[],
     private readonly random: () => number = Math.random,
+    resume?: DeckResume,
   ) {
-    if (this.pool.length > 0) this.refill(undefined);
+    if (resume) {
+      this.queue = resume.queue.slice();
+      this.lastId = resume.lastId;
+    } else if (this.pool.length > 0) {
+      this.refill(undefined);
+    }
+  }
+
+  snapshot(): { queueIds: string[]; lastId?: string } {
+    return { queueIds: this.queue.map((quote) => quote.id), lastId: this.lastId };
   }
 
   draw(): Quote | null {
@@ -39,4 +54,20 @@ export class QuoteDeck {
     }
     this.queue = next;
   }
+}
+
+export function resumeDeck(
+  pool: readonly Quote[],
+  random: () => number,
+  queueIds: string[],
+  lastId?: string,
+): QuoteDeck | null {
+  const byId = new Map(pool.map((quote) => [quote.id, quote]));
+  const queue: Quote[] = [];
+  for (const id of queueIds) {
+    const quote = byId.get(id);
+    if (!quote) return null;
+    queue.push(quote);
+  }
+  return new QuoteDeck(pool, random, { queue, lastId });
 }

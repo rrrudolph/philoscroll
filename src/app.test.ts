@@ -9,7 +9,35 @@ const css = readFileSync(join(process.cwd(), "src", "styles.css"), "utf8");
 
 const quotes = loadQuotes(raw);
 
-function render() {
+class MemoryStorage implements Storage {
+  private data = new Map<string, string>();
+
+  get length(): number {
+    return this.data.size;
+  }
+
+  clear(): void {
+    this.data.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.data.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return [...this.data.keys()][index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.data.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
+}
+
+function render(options?: { storage?: Storage }) {
   if (!document.head.querySelector("style[data-app-css]")) {
     const style = document.createElement("style");
     style.dataset.appCss = "true";
@@ -18,7 +46,7 @@ function render() {
   }
   const root = document.createElement("div");
   document.body.append(root);
-  mount(root, { quotes, random: () => 0.42 });
+  mount(root, { quotes, random: () => 0.42, storage: options?.storage });
   return root;
 }
 
@@ -194,6 +222,24 @@ describe("the scroll", () => {
     expect(shiftY(leaving)).toBeLessThanOrEqual(-80);
     expect(Number(leaving.style.opacity)).toBe(0);
     expect(arriving.isConnected && leaving.isConnected).toBe(true);
+  });
+
+  it("remembers the teaching and browse position across a reload", () => {
+    const storage = new MemoryStorage();
+    const root = render({ storage });
+    const feed = root.querySelector("main");
+    const first = visibleText(root);
+    swipe(feed, 300, 120);
+    const second = visibleText(root);
+    expect(second).not.toBe(first);
+
+    document.body.innerHTML = "";
+    const reloaded = render({ storage });
+    const feedAgain = reloaded.querySelector("main");
+    expect(visibleText(reloaded)).toBe(second);
+
+    swipe(feedAgain, 80, 220);
+    expect(visibleText(reloaded)).toBe(first);
   });
 
   it("replaces the line in place when motion is reduced", () => {
