@@ -25,7 +25,7 @@ storeFile=../upload-keystore.jks
 
 Without that file the release bundle is signed with the debug key so it can be installed on a device. Play Store will not accept that signature.
 
-The Release workflow signs with the same four values, stored as repository secrets: `ANDROID_KEYSTORE_BASE64` (the `.jks` file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, and `ANDROID_KEY_ALIAS`. Download the bundle from the run and upload it in Play Console.
+The Release workflow’s **Play bundle** job is off until `ANDROID_*` secrets exist (see `.github/workflows/release.yml`). When ready, add the same four values as repository secrets and re-enable that job.
 
 The application id is `app.philoscroll.philoscroll`.
 

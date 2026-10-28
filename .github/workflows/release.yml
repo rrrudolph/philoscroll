@@ -50,7 +50,9 @@ jobs:
       - name: Test
         run: flutter test
 
+  # Play Store: re-enable when ANDROID_* repository secrets are configured (see mobile/README.md).
   android:
+    if: false
     name: Play bundle
     needs: test
     runs-on: ubuntu-latest
