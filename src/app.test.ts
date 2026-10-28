@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import raw from "../data.json";
 import { handoffTravel, mount } from "./app";
 import { loadQuotes } from "./quotes";
+import { themes, type ThemeName } from "./tokens";
 
 const css = readFileSync(join(process.cwd(), "src", "styles.css"), "utf8");
 
@@ -50,10 +51,117 @@ function render(options?: { storage?: Storage }) {
   return root;
 }
 
+let restoreScheme: (() => void) | undefined;
+
 afterEach(() => {
+  restoreScheme?.();
+  restoreScheme = undefined;
   document.body.innerHTML = "";
   document.documentElement.removeAttribute("data-theme");
+  document.querySelector('meta[name="theme-color"]')?.remove();
 });
+
+function useColorScheme(prefersDark: boolean) {
+  const previous = window.matchMedia;
+  let matches = prefersDark;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  window.matchMedia = ((query: string) => {
+    if (query !== "(prefers-color-scheme: dark)") return previous.call(window, query);
+    return {
+      get matches() {
+        return matches;
+      },
+      media: query,
+      addEventListener(_type: string, listener: EventListener) {
+        listeners.add(listener as (event: MediaQueryListEvent) => void);
+      },
+      removeEventListener(_type: string, listener: EventListener) {
+        listeners.delete(listener as (event: MediaQueryListEvent) => void);
+      },
+      addListener(listener: (event: MediaQueryListEvent) => void) {
+        listeners.add(listener);
+      },
+      removeListener(listener: (event: MediaQueryListEvent) => void) {
+        listeners.delete(listener);
+      },
+      dispatchEvent() {
+        return true;
+      },
+      onchange: null,
+    } as MediaQueryList;
+  }) as typeof window.matchMedia;
+  restoreScheme = () => {
+    window.matchMedia = previous;
+  };
+  return {
+    set(dark: boolean) {
+      matches = dark;
+      const event = { matches: dark, media: "(prefers-color-scheme: dark)" } as MediaQueryListEvent;
+      for (const listener of listeners) listener(event);
+    },
+  };
+}
+
+function relativeLuminance(color: string): number {
+  const [red, green, blue] = channels(color).map((value) => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red! + 0.7152 * green! + 0.0722 * blue!;
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const first = relativeLuminance(foreground);
+  const second = relativeLuminance(background);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function expectPalette(root: HTMLElement, name: ThemeName) {
+  const palette = themes[name];
+  const styles = getComputedStyle(document.documentElement);
+  const background = styles.getPropertyValue("--bg").trim();
+  const text = styles.getPropertyValue("--text").trim();
+  const muted = styles.getPropertyValue("--muted").trim();
+  expect(document.documentElement.dataset.theme).toBe(name);
+  expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(palette.bg);
+  expect(background).toBe(palette.bg);
+  expect(text).toBe(palette.text);
+  expect(muted).toBe(palette.muted);
+  expect(contrastRatio(text, background)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(muted, background)).toBeGreaterThanOrEqual(4.5);
+  expect(root.querySelector("button")).toBeNull();
+  const quote = root.querySelector(".quote-text");
+  const author = root.querySelector(".quote-author");
+  if (!(quote instanceof HTMLElement) || !(author instanceof HTMLElement)) {
+    throw new Error("the teaching is not on the page");
+  }
+  expect(sameColor(getComputedStyle(quote).color, text)).toBe(true);
+  expect(sameColor(getComputedStyle(author).color, muted)).toBe(true);
+  expect(contrastRatio(getComputedStyle(quote).color, background)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(getComputedStyle(author).color, background)).toBeGreaterThanOrEqual(4.5);
+}
+
+function channels(color: string): [number, number, number] {
+  const hex = color.trim().match(/^#([0-9a-f]{6})$/i);
+  if (hex?.[1]) {
+    return [
+      parseInt(hex[1].slice(0, 2), 16),
+      parseInt(hex[1].slice(2, 4), 16),
+      parseInt(hex[1].slice(4, 6), 16),
+    ];
+  }
+  const rgb = color.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (!rgb?.[1] || !rgb[2] || !rgb[3]) throw new Error(`unreadable color ${color}`);
+  return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+}
+
+function sameColor(actual: string, expected: string): boolean {
+  const left = channels(actual);
+  const right = channels(expected);
+  return left.every((channel, index) => Math.abs(channel - right[index]!) < 0.5);
+}
 
 describe("the scroll", () => {
   it("shows only the teaching and the author", () => {
@@ -70,16 +178,16 @@ describe("the scroll", () => {
     expect(quotes.some((quote) => quote.author === author?.textContent)).toBe(true);
   });
 
-  it("stays dark regardless of system appearance and does not offer a switch", () => {
+  it("follows the phone appearance and updates when that setting changes", () => {
+    const scheme = useColorScheme(false);
     const root = render();
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#121824");
-    expect(root.querySelector("[data-action='theme']")).toBeNull();
-    expect(root.querySelector("button")).toBeNull();
+    expectPalette(root, "light");
 
-    const styles = getComputedStyle(document.documentElement);
-    expect(styles.getPropertyValue("--bg").trim()).toBe("#121824");
-    expect(styles.getPropertyValue("--text").trim()).toBe("#E5E7EB");
+    scheme.set(true);
+    expectPalette(root, "dark");
+
+    scheme.set(false);
+    expectPalette(root, "light");
   });
 
   it("changes the teaching only when the page is swiped", () => {

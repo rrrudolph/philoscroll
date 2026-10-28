@@ -8,14 +8,30 @@ import {
   scrollPoolKey,
   storageForMount,
 } from "./session";
-import { applyTheme } from "./theme";
+import { applyTheme, themeFromPreference } from "./theme";
 import type { Quote } from "./types";
 
 export type MountOptions = {
   quotes: readonly Quote[];
   random?: () => number;
   storage?: Storage;
+  prefersDark?: boolean;
 };
+
+let stopThemeFollow: (() => void) | undefined;
+
+function followSystemTheme(prefersDark: boolean | undefined): void {
+  stopThemeFollow?.();
+  stopThemeFollow = undefined;
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  applyTheme(themeFromPreference(prefersDark ?? media.matches));
+  if (prefersDark !== undefined) return;
+  const onChange = (event: MediaQueryListEvent) => {
+    applyTheme(themeFromPreference(event.matches));
+  };
+  media.addEventListener("change", onChange);
+  stopThemeFollow = () => media.removeEventListener("change", onChange);
+}
 
 /** How far the two teachings travel together: past the text, and never off the card. */
 export function handoffTravel(blockHeight: number, cardHeight: number): number {
@@ -34,7 +50,7 @@ type QuoteCard = {
 export function mount(root: HTMLElement, options: MountOptions): void {
   const quotes = options.quotes;
   const random = options.random ?? Math.random;
-  applyTheme();
+  followSystemTheme(options.prefersDark);
 
   root.replaceChildren();
   if (quotes.length === 0) return;
