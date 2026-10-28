@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'fit.dart';
 import 'measure.dart';
 import 'quote.dart';
+import 'theme.dart';
 
 enum CardRole { current, neighbor, leaving, arriving }
 
@@ -32,6 +33,7 @@ class QuoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = PhiloTheme.of(context);
     final column = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -39,7 +41,7 @@ class QuoteCard extends StatelessWidget {
           quote.text,
           key: showsReadingKeys ? const Key('quote-text') : null,
           textAlign: TextAlign.center,
-          style: quoteStyle(fontSize),
+          style: quoteStyle(fontSize, palette.text),
           textScaler: scaler,
         ),
         SizedBox(height: frame.authorGap),
@@ -47,7 +49,7 @@ class QuoteCard extends StatelessWidget {
           quote.author.toUpperCase(),
           key: showsReadingKeys ? const Key('quote-author') : null,
           textAlign: TextAlign.center,
-          style: authorStyle(),
+          style: authorStyle(palette.muted),
           textScaler: scaler,
         ),
       ],

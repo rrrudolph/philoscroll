@@ -2,12 +2,11 @@ import 'package:flutter/widgets.dart';
 
 import 'fit.dart';
 import 'quote.dart';
-import 'theme.dart';
 
 const quoteFontFamily = 'Source Serif 4';
 const authorFontFamily = 'Outfit';
 
-TextStyle quoteStyle(double fontPx) {
+TextStyle quoteStyle(double fontPx, Color color) {
   return TextStyle(
     fontFamily: quoteFontFamily,
     fontStyle: FontStyle.italic,
@@ -15,7 +14,7 @@ TextStyle quoteStyle(double fontPx) {
     fontSize: fontPx,
     height: QuoteMetrics.lineHeight,
     letterSpacing: fontPx * QuoteMetrics.letterSpacingEm,
-    color: PhiloColors.text,
+    color: color,
     fontVariations: [
       const FontVariation('wght', 400),
       FontVariation('opsz', fontPx.clamp(8, 60)),
@@ -23,16 +22,16 @@ TextStyle quoteStyle(double fontPx) {
   );
 }
 
-TextStyle authorStyle() {
+TextStyle authorStyle(Color color) {
   const fontPx = QuoteMetrics.authorFontRem * 16;
-  return const TextStyle(
+  return TextStyle(
     fontFamily: authorFontFamily,
     fontStyle: FontStyle.normal,
     fontWeight: FontWeight.w500,
     fontSize: fontPx,
     height: QuoteMetrics.authorLineHeight,
     letterSpacing: fontPx * QuoteMetrics.authorLetterSpacingEm,
-    color: PhiloColors.muted,
+    color: color,
     fontVariations: [FontVariation('wght', 500)],
   );
 }
@@ -48,9 +47,9 @@ double paintedHeight(String text, TextStyle style, double width, TextScaler scal
 }
 
 double blockHeight(Quote quote, double fontPx, Frame frame, TextScaler scaler) {
-  return paintedHeight(quote.text, quoteStyle(fontPx), frame.columnWidth, scaler) +
+  return paintedHeight(quote.text, quoteStyle(fontPx, const Color(0xFF000000)), frame.columnWidth, scaler) +
       frame.authorGap +
-      paintedHeight(quote.author.toUpperCase(), authorStyle(), frame.columnWidth, scaler);
+      paintedHeight(quote.author.toUpperCase(), authorStyle(const Color(0xFF000000)), frame.columnWidth, scaler);
 }
 
 double fittedQuoteFont({

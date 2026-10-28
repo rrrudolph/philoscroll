@@ -17,7 +17,7 @@ void main() {
 
   setUpAll(loadAppFonts);
 
-  testWidgets('shows only the teaching and the author, in the dark', (tester) async {
+  testWidgets('shows only the teaching and the author', (tester) async {
     await pumpScroll(tester, quotes);
     final card = currentCard(tester);
     expect(card.quote.text.length, greaterThan(20));
@@ -34,21 +34,24 @@ void main() {
     final text = tester.widget<Text>(find.byKey(const Key('quote-text')));
     final author = tester.widget<Text>(find.byKey(const Key('quote-author')));
     final background = tester.widget<ColoredBox>(find.byKey(const Key('scroll-bg'))).color;
-    expect(text.style!.color, PhiloColors.text);
+    expect(text.style!.color, PhiloPalette.light.text);
     expect(text.style!.fontStyle, FontStyle.italic);
     expect(text.style!.fontWeight, FontWeight.w400);
     expect(text.style!.fontFamily, quoteFontFamily);
     expect(text.style!.letterSpacing!, greaterThanOrEqualTo(0));
     expect(author.data, card.quote.author.toUpperCase());
-    expect(author.style!.color, PhiloColors.muted);
+    expect(author.style!.color, PhiloPalette.light.muted);
     expect(author.style!.fontWeight, FontWeight.w500);
     expect(author.style!.fontFamily, authorFontFamily);
     expect(contrastRatio(text.style!.color!, background), greaterThanOrEqualTo(4.5));
     expect(contrastRatio(author.style!.color!, background), greaterThanOrEqualTo(4.5));
 
-    final theme = tester.widget<MaterialApp>(find.byType(MaterialApp)).theme!;
-    expect(theme.brightness, Brightness.dark);
-    expect(theme.scaffoldBackgroundColor, PhiloColors.bg);
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.themeMode, ThemeMode.system);
+    expect(app.theme!.brightness, Brightness.light);
+    expect(app.darkTheme!.brightness, Brightness.dark);
+    expect(app.theme!.scaffoldBackgroundColor, PhiloPalette.light.bg);
+    expect(app.darkTheme!.scaffoldBackgroundColor, PhiloPalette.dark.bg);
 
     final handle = tester.ensureSemantics();
     expect(find.bySemanticsLabel(RegExp(RegExp.escape(card.quote.author))), findsOneWidget);
@@ -224,10 +227,39 @@ void main() {
     expect(find.byType(QuoteCard), findsNothing);
   });
 
-  testWidgets('an empty list is a dark page with nothing to read', (tester) async {
+  testWidgets('an empty list is a blank page in the system colors', (tester) async {
     await pumpScroll(tester, const []);
     expect(find.byType(QuoteCard), findsNothing);
-    expect(tester.widget<ColoredBox>(find.byKey(const Key('scroll-bg'))).color, PhiloColors.bg);
+    expect(tester.widget<ColoredBox>(find.byKey(const Key('scroll-bg'))).color, PhiloPalette.light.bg);
+  });
+
+  testWidgets('follows light and dark appearance and does not offer a switch', (tester) async {
+    await pumpScroll(tester, quotes);
+    expect(find.byType(Switch), findsNothing);
+
+    final lightBackground = tester.widget<ColoredBox>(find.byKey(const Key('scroll-bg'))).color;
+    final lightText = tester.widget<Text>(find.byKey(const Key('quote-text'))).style!.color!;
+    final lightAuthor = tester.widget<Text>(find.byKey(const Key('quote-author'))).style!.color!;
+    expect(lightBackground, PhiloPalette.light.bg);
+    expect(lightText, PhiloPalette.light.text);
+    expect(lightAuthor, PhiloPalette.light.muted);
+    expect(contrastRatio(lightText, lightBackground), greaterThanOrEqualTo(4.5));
+    expect(contrastRatio(lightAuthor, lightBackground), greaterThanOrEqualTo(4.5));
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    await tester.pumpAndSettle();
+
+    final darkBackground = tester.widget<ColoredBox>(find.byKey(const Key('scroll-bg'))).color;
+    final darkText = tester.widget<Text>(find.byKey(const Key('quote-text'))).style!.color!;
+    final darkAuthor = tester.widget<Text>(find.byKey(const Key('quote-author'))).style!.color!;
+    expect(darkBackground, PhiloPalette.dark.bg);
+    expect(darkText, PhiloPalette.dark.text);
+    expect(darkAuthor, PhiloPalette.dark.muted);
+    expect(contrastRatio(darkText, darkBackground), greaterThanOrEqualTo(4.5));
+    expect(contrastRatio(darkAuthor, darkBackground), greaterThanOrEqualTo(4.5));
+    expect(darkText, isNot(lightText));
+    expect(darkBackground, isNot(lightBackground));
   });
 }
 

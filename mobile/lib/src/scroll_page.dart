@@ -306,6 +306,7 @@ class _ScrollPageState extends State<ScrollPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final palette = PhiloTheme.of(context);
     return SizedBox.expand(
       child: Listener(
         behavior: HitTestBehavior.opaque,
@@ -315,17 +316,17 @@ class _ScrollPageState extends State<ScrollPage> with SingleTickerProviderStateM
         onPointerCancel: _onPointerCancel,
         child: ColoredBox(
           key: const Key('scroll-bg'),
-          color: PhiloColors.bg,
+          color: palette.bg,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    center: Alignment(0, -1.15),
+                    center: const Alignment(0, -1.15),
                     radius: 1.05,
-                    colors: [PhiloColors.glow, Color(0x00B7C9A3)],
-                    stops: [0, 0.68],
+                    colors: [palette.glow, palette.glowClear],
+                    stops: const [0, 0.68],
                   ),
                 ),
               ),

@@ -8,10 +8,12 @@ void main() {
     expect(contrastRatio(const Color(0xFFFFFFFF), const Color(0xFF000000)), closeTo(21, 1e-5));
   });
 
-  test('keeps text, accents, and control borders readable on the dark theme', () {
-    expect(contrastRatio(PhiloColors.text, PhiloColors.bg), greaterThanOrEqualTo(4.5));
-    expect(contrastRatio(PhiloColors.muted, PhiloColors.bg), greaterThanOrEqualTo(4.5));
-    expect(contrastRatio(PhiloColors.accent, PhiloColors.bg), greaterThanOrEqualTo(4.5));
-    expect(contrastRatio(PhiloColors.line, PhiloColors.bg), greaterThanOrEqualTo(3));
+  test('keeps text, accents, and control borders readable in both appearances', () {
+    for (final palette in [PhiloPalette.light, PhiloPalette.dark]) {
+      expect(contrastRatio(palette.text, palette.bg), greaterThanOrEqualTo(4.5));
+      expect(contrastRatio(palette.muted, palette.bg), greaterThanOrEqualTo(4.5));
+      expect(contrastRatio(palette.accent, palette.bg), greaterThanOrEqualTo(4.5));
+      expect(contrastRatio(palette.line, palette.bg), greaterThanOrEqualTo(3));
+    }
   });
 }

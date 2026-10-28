@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - mobile/**
+      - data.json
+      - .github/workflows/ci.yml
+  pull_request:
+    paths:
+      - mobile/**
+      - data.json
+      - .github/workflows/ci.yml
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.6
+          cache: true
+
+      - name: Test
+        run: flutter test

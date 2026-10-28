@@ -38,3 +38,33 @@ Turn on upload for that run, and set `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_
 Each Release run uses a new build number. The version name stays the one in `pubspec.yaml`.
 
 The name on the home screen is PhiloScroll. The bundle id is `app.philoscroll.philoscroll`. The app does not use encryption beyond what the system provides, and it does not collect data.
+
+### App Store Connect (one-time)
+
+Do this in [Apple Developer](https://developer.apple.com/account) and [App Store Connect](https://appstoreconnect.apple.com) before the first upload.
+
+1. **Identifiers** — Register an App ID with bundle id `app.philoscroll.philoscroll` (no special capabilities required).
+2. **Certificates** — Create an **Apple Distribution** certificate. Export it as a `.p12` with a password.
+3. **Profiles** — Create an **App Store** provisioning profile for that App ID. Download the `.mobileprovision` file.
+4. **App record** — In App Store Connect, add a new app with the same bundle id and name **PhiloScroll**.
+5. **API key** — Users and Access → Integrations → App Store Connect API. Generate a key with **Developer** access. Save the `.p8`, Key ID, and Issuer ID.
+
+**GitHub repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|--------|--------|
+| `IOS_DISTRIBUTION_CERTIFICATE_BASE64` | `.p12` file, base64 (no line breaks) |
+| `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | export password |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`, base64 |
+| `APP_STORE_CONNECT_API_KEY_ID` | Key ID (only needed when upload is on) |
+| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID |
+| `APP_STORE_CONNECT_API_KEY_BASE64` | `.p8` file, base64 |
+
+On Windows, base64 for a binary file:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes('path\to\file.p12'))
+```
+
+6. **Release workflow** — Actions → **Release** → Run workflow. Leave **upload** off the first time; download the **app-store-ipa** artifact and confirm the build. Run again with **upload** on to send it to App Store Connect.
+7. **Listing** — In the app’s **App Store** tab, set privacy policy URL `https://philoscroll.lightvoid.app/privacy.html`, support URL or email `support@lightvoid.app`, category (e.g. Books or Lifestyle), screenshots, and description. Under **App Privacy**, declare that you do not collect data. Export compliance should match `ITSAppUsesNonExemptEncryption` (standard encryption only / exempt). Submit the build for review when the listing is complete.
