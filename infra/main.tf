@@ -135,7 +135,7 @@ resource "aws_cloudfront_distribution" "site" {
   is_ipv6_enabled     = true
   http_version        = "http2and3"
   price_class         = "PriceClass_All"
-  comment             = "Philokalia scroll"
+  comment             = "PhiloScroll"
   default_root_object = "index.html"
 
   origin {

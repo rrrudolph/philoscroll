@@ -28,24 +28,44 @@ class PhiloApp extends StatelessWidget {
     final page = loadError == null
         ? ScrollPage(quotes: quotes, store: store, random: random, reduceMotion: reduceMotion)
         : _ClosedBook(loadError!);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: const Color(0x00000000),
-        systemNavigationBarColor: PhiloColors.bg,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-      child: MaterialApp(
-        title: 'Philokalia',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: PhiloColors.bg,
-          canvasColor: PhiloColors.bg,
-        ),
-        home: Scaffold(backgroundColor: PhiloColors.bg, body: page),
-      ),
+    return MaterialApp(
+      title: 'PhiloScroll',
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
+      theme: _materialTheme(PhiloPalette.light),
+      darkTheme: _materialTheme(PhiloPalette.dark),
+      builder: (context, child) {
+        final palette = PhiloPalette.forBrightness(MediaQuery.platformBrightnessOf(context));
+        return PhiloTheme(
+          palette: palette,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: _overlay(palette),
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
+      home: Scaffold(body: page),
     );
   }
+}
+
+ThemeData _materialTheme(PhiloPalette palette) {
+  return ThemeData(
+    brightness: palette.brightness,
+    scaffoldBackgroundColor: palette.bg,
+    canvasColor: palette.bg,
+  );
+}
+
+SystemUiOverlayStyle _overlay(PhiloPalette palette) {
+  final dark = palette.brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: const Color(0x00000000),
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    systemNavigationBarColor: palette.bg,
+    systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+  );
 }
 
 class _ClosedBook extends StatelessWidget {
@@ -55,13 +75,14 @@ class _ClosedBook extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = PhiloTheme.of(context);
     return ColoredBox(
       key: const Key('scroll-bg'),
-      color: PhiloColors.bg,
+      color: palette.bg,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(message, textAlign: TextAlign.center, style: quoteStyle(22)),
+          child: Text(message, textAlign: TextAlign.center, style: quoteStyle(22, palette.text)),
         ),
       ),
     );
