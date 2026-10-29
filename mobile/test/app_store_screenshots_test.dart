@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:philoscroll/app.dart';
-import 'package:philoscroll/src/quote.dart';
 import 'package:philoscroll/src/scroll_page.dart';
 
 import 'support.dart';
@@ -12,36 +11,41 @@ class _PhoneSpec {
     required this.logical,
     required this.devicePixelRatio,
     required this.physical,
+    required this.label,
   });
 
   final Size logical;
   final double devicePixelRatio;
   final Size physical;
+  final String label;
 
   /// Typical safe area (Dynamic Island / home indicator), logical pt.
   EdgeInsets get safePadding => const EdgeInsets.fromLTRB(0, 59, 0, 34);
 
   static const inch67 = _PhoneSpec(
+    label: '6.7 inch',
     logical: Size(430, 932),
     devicePixelRatio: 3,
     physical: Size(1290, 2796),
   );
 
   static const inch61 = _PhoneSpec(
+    label: '6.1 inch',
     logical: Size(393, 852),
     devicePixelRatio: 3,
     physical: Size(1179, 2556),
   );
 }
 
-/// App Store iPhone screenshots (portrait).
+/// App Store iPhone screenshot layout checks (portrait).
 ///
-/// | Prefix | PNG size | ASC slot |
-/// |--------|----------|----------|
-/// | `app_store_6_7_*` | 1290×2796 | 6.7" / Dynamic Island (medium) |
-/// | `app_store_6_1_*` | 1179×2556 | 6.1" / 6.3" |
+/// Pixel goldens differ between Windows and Linux CI, so we verify size, texture,
+/// and quote content instead. Export PNGs from a device or simulator for ASC.
 ///
-/// Run: `flutter test test/app_store_screenshots_test.dart --update-goldens`
+/// | Slot | PNG size |
+/// |------|----------|
+/// | 6.7" / Dynamic Island | 1290×2796 |
+/// | 6.1" / 6.3" | 1179×2556 |
 void main() {
   final quotes = loadTestQuotes();
 
@@ -76,10 +80,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> capture(
+  Future<void> assertFrame(
     WidgetTester tester,
-    _PhoneSpec phone,
-    String golden, {
+    _PhoneSpec phone, {
     int swipes = 0,
   }) async {
     tester.view.physicalSize = phone.physical;
@@ -91,30 +94,29 @@ void main() {
     for (var i = 0; i < swipes; i++) {
       await swipeUp(tester);
     }
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$golden'));
+
+    expect(tester.takeException(), isNull);
+    expect(tester.view.physicalSize, phone.physical);
+    expect(find.byKey(const Key('scroll-texture')), findsOneWidget);
+    expect(find.byKey(const Key('quote-text')), findsOneWidget);
+    expect(find.byKey(const Key('quote-author')), findsOneWidget);
+
+    final quote = tester.widget<Text>(find.byKey(const Key('quote-text')));
+    expect(quote.data!.length, greaterThan(40));
+    expect(quotes.any((q) => q.text == quote.data), isTrue);
   }
 
-  group('6.7 inch (1290×2796)', () {
-    testWidgets('screenshot 1', (tester) async {
-      await capture(tester, _PhoneSpec.inch67, 'app_store_6_7_01.png');
+  for (final phone in [_PhoneSpec.inch67, _PhoneSpec.inch61]) {
+    group('${phone.label} (${phone.physical.width.toInt()}×${phone.physical.height.toInt()})', () {
+      testWidgets('first teaching', (tester) async {
+        await assertFrame(tester, phone);
+      });
+      testWidgets('after one swipe', (tester) async {
+        await assertFrame(tester, phone, swipes: 1);
+      });
+      testWidgets('after two swipes', (tester) async {
+        await assertFrame(tester, phone, swipes: 2);
+      });
     });
-    testWidgets('screenshot 2', (tester) async {
-      await capture(tester, _PhoneSpec.inch67, 'app_store_6_7_02.png', swipes: 1);
-    });
-    testWidgets('screenshot 3', (tester) async {
-      await capture(tester, _PhoneSpec.inch67, 'app_store_6_7_03.png', swipes: 2);
-    });
-  });
-
-  group('6.1 inch (1179×2556)', () {
-    testWidgets('screenshot 1', (tester) async {
-      await capture(tester, _PhoneSpec.inch61, 'app_store_6_1_01.png');
-    });
-    testWidgets('screenshot 2', (tester) async {
-      await capture(tester, _PhoneSpec.inch61, 'app_store_6_1_02.png', swipes: 1);
-    });
-    testWidgets('screenshot 3', (tester) async {
-      await capture(tester, _PhoneSpec.inch61, 'app_store_6_1_03.png', swipes: 2);
-    });
-  });
+  }
 }

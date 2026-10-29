@@ -13,13 +13,13 @@ void main() {
 
   test('uses the same texture files as the web scroll', () {
     expect(ScrollBackground.lightTextureAsset, 'assets/textures/old-parchment.jpg');
-    expect(ScrollBackground.darkTextureAsset, 'assets/textures/darkslate.avif');
+    expect(ScrollBackground.darkTextureAsset, 'assets/textures/darkslate.jpg');
     expect(
       File('assets/textures/old-parchment.jpg').existsSync(),
       isTrue,
       reason: 'run npm run build or scripts/copy-textures.mjs to sync from prototypes',
     );
-    expect(File('assets/textures/darkslate.avif').existsSync(), isTrue);
+    expect(File('assets/textures/darkslate.jpg').existsSync(), isTrue);
   });
 
   testWidgets('shows parchment in light mode and slate in dark mode', (tester) async {

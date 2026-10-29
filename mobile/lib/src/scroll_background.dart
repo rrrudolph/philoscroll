@@ -5,7 +5,8 @@ import 'theme.dart';
 /// Parchment / slate scroll backgrounds shared with the web app (`src/styles.css`).
 abstract final class ScrollBackground {
   static const lightTextureAsset = 'assets/textures/old-parchment.jpg';
-  static const darkTextureAsset = 'assets/textures/darkslate.avif';
+  /// JPEG so Flutter tests and Linux CI can decode it (AVIF is web-only in `dist/textures`).
+  static const darkTextureAsset = 'assets/textures/darkslate.jpg';
 
   static String textureAssetFor(Brightness brightness) {
     return brightness == Brightness.dark ? darkTextureAsset : lightTextureAsset;

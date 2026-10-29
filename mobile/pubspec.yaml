@@ -58,7 +58,7 @@ flutter:
   assets:
     - assets/data.json
     - assets/textures/old-parchment.jpg
-    - assets/textures/darkslate.avif
+    - assets/textures/darkslate.jpg
     - assets/fonts/SourceSerif4-OFL.txt
     - assets/fonts/Outfit-OFL.txt
 

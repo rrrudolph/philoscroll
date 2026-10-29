@@ -8,12 +8,19 @@ const mobileTextureDir = join(root, "mobile", "assets", "textures");
 
 await mkdir(textureDir, { recursive: true });
 await mkdir(mobileTextureDir, { recursive: true });
-const sources = [
-  ["old-parchment.jpg", "old-parchment.jpg"],
-  ["darkslate.avif", "darkslate.avif"],
-] as const;
-for (const [name] of sources) {
-  const from = join(root, "prototypes", "textures", name);
-  await cp(from, join(textureDir, name));
-  await cp(from, join(mobileTextureDir, name));
-}
+await cp(
+  join(root, "prototypes", "textures", "old-parchment.jpg"),
+  join(textureDir, "old-parchment.jpg"),
+);
+await cp(
+  join(root, "prototypes", "textures", "old-parchment.jpg"),
+  join(mobileTextureDir, "old-parchment.jpg"),
+);
+await cp(
+  join(root, "prototypes", "textures", "darkslate.avif"),
+  join(textureDir, "darkslate.avif"),
+);
+await cp(
+  join(root, "prototypes", "textures", "dark-worn.jpg"),
+  join(mobileTextureDir, "darkslate.jpg"),
+);
