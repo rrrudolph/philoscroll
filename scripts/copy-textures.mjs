@@ -20,7 +20,8 @@ await cp(
   join(root, "prototypes", "textures", "darkslate.avif"),
   join(textureDir, "darkslate.avif"),
 );
+// JPEG export of prototypes/textures/darkslate.avif (Flutter cannot bundle AVIF).
 await cp(
-  join(root, "prototypes", "textures", "dark-worn.jpg"),
+  join(root, "prototypes", "textures", "darkslate.jpg"),
   join(mobileTextureDir, "darkslate.jpg"),
 );

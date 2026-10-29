@@ -22,6 +22,18 @@ void main() {
     expect(File('assets/textures/darkslate.jpg').existsSync(), isTrue);
   });
 
+  test('dark mode texture matches prototypes darkslate export', () {
+    final mobile = File('assets/textures/darkslate.jpg').readAsBytesSync();
+    final prototype = File('../prototypes/textures/darkslate.jpg').readAsBytesSync();
+    expect(mobile, prototype);
+  });
+
+  test('dark mode texture is not the old dark-worn placeholder', () {
+    final worn = File('../prototypes/textures/dark-worn.jpg').readAsBytesSync();
+    final mobile = File('assets/textures/darkslate.jpg').readAsBytesSync();
+    expect(mobile, isNot(equals(worn)));
+  });
+
   testWidgets('shows parchment in light mode and slate in dark mode', (tester) async {
     final quotes = loadTestQuotes();
     await loadAppFonts();
