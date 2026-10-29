@@ -9,6 +9,7 @@ import 'motion.dart';
 import 'quote.dart';
 import 'quote_card.dart';
 import 'session.dart';
+import 'scroll_background.dart';
 import 'theme.dart';
 
 const handoffMs = 440;
@@ -320,27 +321,7 @@ class _ScrollPageState extends State<ScrollPage> with SingleTickerProviderStateM
           child: Stack(
             fit: StackFit.expand,
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -1.15),
-                    radius: 1.05,
-                    colors: [palette.glow, palette.glowClear],
-                    stops: const [0, 0.68],
-                  ),
-                ),
-              ),
-              DecoratedBox(
-                key: const Key('scroll-vignette'),
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.06),
-                    radius: 1.12,
-                    colors: [ScrollVignette.center, ScrollVignette.mid, ScrollVignette.edge],
-                    stops: [ScrollVignette.centerStop, ScrollVignette.midStop, 1],
-                  ),
-                ),
-              ),
+              ScrollBackgroundLayers(palette: palette),
               ..._cards(),
             ],
           ),

@@ -45,6 +45,7 @@ void main() {
     expect(author.style!.fontFamily, authorFontFamily);
     expect(contrastRatio(text.style!.color!, background), greaterThanOrEqualTo(4.5));
     expect(contrastRatio(author.style!.color!, background), greaterThanOrEqualTo(4.5));
+    expect(find.byKey(const Key('scroll-texture')), findsOneWidget);
     expect(find.byKey(const Key('scroll-vignette')), findsOneWidget);
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
