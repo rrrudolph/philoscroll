@@ -25,6 +25,7 @@ locals {
     jpg         = "image/jpeg"
     jpeg        = "image/jpeg"
     webp        = "image/webp"
+    avif        = "image/avif"
     ico         = "image/x-icon"
     txt         = "text/plain; charset=utf-8"
     webmanifest = "application/manifest+json"

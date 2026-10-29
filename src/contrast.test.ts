@@ -106,10 +106,11 @@ describe("theme contrast", () => {
       for (const [key, value] of Object.entries(palette)) {
         expect(declared(block, key)).toBe(value);
       }
-      expect(contrastRatio(declared(block, "text"), declared(block, "bg"))).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(declared(block, "muted"), declared(block, "bg"))).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(declared(block, "accent"), declared(block, "bg"))).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(declared(block, "line"), declared(block, "bg"))).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(declared(block, "text"), declared(block, "surface"))).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(declared(block, "quote"), declared(block, "surface"))).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(declared(block, "muted"), declared(block, "surface"))).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(declared(block, "accent"), declared(block, "surface"))).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(declared(block, "line"), declared(block, "surface"))).toBeGreaterThanOrEqual(3);
     }
   });
 
@@ -124,9 +125,10 @@ describe("theme contrast", () => {
       expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(palette.bg);
       const background = getComputedStyle(page).backgroundColor;
       const foreground = getComputedStyle(page).color;
-      expect(sameColor(background, palette.bg)).toBe(true);
+      const flashBackground = prefersDark ? palette.bg : palette.surface;
+      expect(sameColor(background, flashBackground)).toBe(true);
       expect(sameColor(foreground, palette.text)).toBe(true);
-      expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(foreground, flashBackground)).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

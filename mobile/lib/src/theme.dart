@@ -48,6 +48,16 @@ class PhiloPalette {
   Color get glowClear => glow.withAlpha(0);
 }
 
+/// Edge darkening shared with the web scroll; sits over the background, under the quote.
+abstract final class ScrollVignette {
+  static const center = Color(0x00000000);
+  static const mid = Color(0x61000000);
+  static const edge = Color(0xB8000000);
+
+  static const centerStop = 0.38;
+  static const midStop = 0.65;
+}
+
 class PhiloTheme extends InheritedWidget {
   const PhiloTheme({super.key, required this.palette, required super.child});
 

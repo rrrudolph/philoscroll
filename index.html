@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#FDFBF7" />
+    <meta name="theme-color" content="#120e0a" />
     <meta name="robots" content="noindex" />
     <meta name="description" content="A quiet scroll of short teachings from the Philokalia." />
     <title>PhiloScroll</title>
@@ -14,22 +14,22 @@
     />
     <style>
       html {
-        background: #FDFBF7;
-        color: #1F2937;
+        background: #ede4d3;
+        color: #000000;
       }
       @media (prefers-color-scheme: dark) {
         html {
-          background: #121824;
-          color: #E5E7EB;
+          background: #0d1014;
+          color: #e5e7eb;
         }
       }
       html[data-theme="light"] {
-        background: #FDFBF7;
-        color: #1F2937;
+        background: #ede4d3;
+        color: #000000;
       }
       html[data-theme="dark"] {
-        background: #121824;
-        color: #E5E7EB;
+        background: #0d1014;
+        color: #e5e7eb;
       }
       .noscript {
         max-width: 36rem;
@@ -47,7 +47,7 @@
         var theme = dark ? "dark" : "light";
         document.documentElement.setAttribute("data-theme", theme);
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "dark" ? "#121824" : "#FDFBF7");
+        if (meta) meta.setAttribute("content", theme === "dark" ? "#0d1014" : "#120e0a");
       })();
     </script>
   </head>

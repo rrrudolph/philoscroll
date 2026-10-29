@@ -330,6 +330,17 @@ class _ScrollPageState extends State<ScrollPage> with SingleTickerProviderStateM
                   ),
                 ),
               ),
+              DecoratedBox(
+                key: const Key('scroll-vignette'),
+                decoration: const BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0, -0.06),
+                    radius: 1.12,
+                    colors: [ScrollVignette.center, ScrollVignette.mid, ScrollVignette.edge],
+                    stops: [ScrollVignette.centerStop, ScrollVignette.midStop, 1],
+                  ),
+                ),
+              ),
               ..._cards(),
             ],
           ),

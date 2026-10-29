@@ -56,6 +56,10 @@ export function mount(root: HTMLElement, options: MountOptions): void {
   if (quotes.length === 0) return;
 
   const feed = document.createElement("main");
+  const vignette = document.createElement("div");
+  vignette.className = "scroll-vignette";
+  vignette.setAttribute("aria-hidden", "true");
+  feed.append(vignette);
   root.append(feed);
 
   const storage = options.storage ?? storageForMount();

@@ -122,25 +122,27 @@ function expectPalette(root: HTMLElement, name: ThemeName) {
   const palette = themes[name];
   const styles = getComputedStyle(document.documentElement);
   const background = styles.getPropertyValue("--bg").trim();
+  const surface = styles.getPropertyValue("--surface").trim();
   const text = styles.getPropertyValue("--text").trim();
   const muted = styles.getPropertyValue("--muted").trim();
   expect(document.documentElement.dataset.theme).toBe(name);
   expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(palette.bg);
   expect(background).toBe(palette.bg);
+  expect(surface).toBe(palette.surface);
   expect(text).toBe(palette.text);
   expect(muted).toBe(palette.muted);
-  expect(contrastRatio(text, background)).toBeGreaterThanOrEqual(4.5);
-  expect(contrastRatio(muted, background)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(text, surface)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(muted, surface)).toBeGreaterThanOrEqual(4.5);
   expect(root.querySelector("button")).toBeNull();
   const quote = root.querySelector(".quote-text");
   const author = root.querySelector(".quote-author");
   if (!(quote instanceof HTMLElement) || !(author instanceof HTMLElement)) {
     throw new Error("the teaching is not on the page");
   }
-  expect(sameColor(getComputedStyle(quote).color, text)).toBe(true);
+  expect(sameColor(getComputedStyle(quote).color, palette.quote)).toBe(true);
   expect(sameColor(getComputedStyle(author).color, muted)).toBe(true);
-  expect(contrastRatio(getComputedStyle(quote).color, background)).toBeGreaterThanOrEqual(4.5);
-  expect(contrastRatio(getComputedStyle(author).color, background)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(getComputedStyle(quote).color, surface)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(getComputedStyle(author).color, surface)).toBeGreaterThanOrEqual(4.5);
 }
 
 function channels(color: string): [number, number, number] {
@@ -176,6 +178,19 @@ describe("the scroll", () => {
     expect(article?.classList.contains("is-visible")).toBe(true);
     expect(quotes.some((quote) => quote.text === text?.textContent)).toBe(true);
     expect(quotes.some((quote) => quote.author === author?.textContent)).toBe(true);
+  });
+
+  it("darkens the edges so the teaching stays in focus", () => {
+    const root = render();
+    const vignette = root.querySelector(".scroll-vignette");
+    expect(vignette).not.toBeNull();
+    const styles = getComputedStyle(vignette!);
+    expect(styles.pointerEvents).toBe("none");
+    expect(styles.backgroundImage).toMatch(/radial-gradient/i);
+    expect(styles.backgroundImage).toMatch(/rgba\(0,\s*0,\s*0/i);
+    const quote = root.querySelector(".quote");
+    expect(quote).not.toBeNull();
+    expect(Number(getComputedStyle(quote!).zIndex)).toBeGreaterThan(Number(styles.zIndex));
   });
 
   it("follows the phone appearance and updates when that setting changes", () => {

@@ -104,7 +104,7 @@ describe("phone link gate", () => {
 
     const colors = painted(result.body ?? "");
     expect(colors).toEqual([
-      { background: themes.light.bg, color: themes.light.text },
+      { background: themes.light.surface, color: themes.light.text },
       { background: themes.dark.bg, color: themes.dark.text },
     ]);
     for (const pair of colors) {
@@ -142,9 +142,29 @@ describe("phone link gate", () => {
   it("lets the script and fonts load once the phone is remembered", () => {
     const source = event({ uri: "/assets/index.js", cookie: password });
     expect(handler(source)).toBe(source.request);
+    expect(source.request.uri).toBe("/assets/index.js");
 
     const font = event({ uri: "/assets/playfair.woff2", cookie: password });
     expect(handler(font)).toBe(font.request);
+    expect(font.request.uri).toBe("/assets/playfair.woff2");
+  });
+
+  it("maps folder paths to index.html for S3 subfolders", () => {
+    const folder = event({ uri: "/archive/", cookie: password });
+    const result = handler(folder);
+    expect(result).toBe(folder.request);
+    expect(folder.request.uri).toBe("/archive/index.html");
+
+    const bare = event({ uri: "/archive", cookie: password });
+    const canonical = response(handler(bare));
+    expect(canonical.statusCode).toBe(301);
+    expect(canonical.headers.location?.value).toBe("https://d111.cloudfront.net/archive/");
+  });
+
+  it("uses trailing slashes in post-login redirects for folder paths", () => {
+    const result = response(handler(event({ key: password, uri: "/archive" })));
+    expect(result.statusCode).toBe(302);
+    expect(result.headers.location?.value).toBe("https://d111.cloudfront.net/archive/");
   });
 
   it("does not send a remembered phone anywhere but this site", () => {

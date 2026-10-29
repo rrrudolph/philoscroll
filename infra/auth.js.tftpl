@@ -17,6 +17,18 @@ function handler(event) {
   }
 
   if (cookieValue(request, cookieName) !== password) return denied();
+  var canonical = viewerPath(request.uri);
+  if (canonical !== safePath(request.uri)) {
+    return {
+      statusCode: 301,
+      statusDescription: "Moved Permanently",
+      headers: {
+        location: { value: "https://" + hostName(event, request) + canonical },
+        "cache-control": { value: "no-store" }
+      }
+    };
+  }
+  request.uri = originUri(request.uri);
   return request;
 }
 
@@ -39,6 +51,27 @@ function safePath(uri) {
   return uri;
 }
 
+function originUri(uri) {
+  var path = safePath(uri);
+  if (path === "/") return path;
+  if (path.charAt(path.length - 1) === "/") return path + "index.html";
+  var last = path.lastIndexOf("/");
+  var leaf = path.slice(last + 1);
+  if (leaf.indexOf(".") === -1) return path + "/index.html";
+  return path;
+}
+
+function viewerPath(uri) {
+  var path = safePath(uri);
+  if (path === "/") return path;
+  var last = path.lastIndexOf("/");
+  var leaf = path.slice(last + 1);
+  if (leaf.indexOf(".") === -1 && path.charAt(path.length - 1) !== "/") {
+    return path + "/";
+  }
+  return path;
+}
+
 function hostName(event, request) {
   var host = request.headers && request.headers.host && request.headers.host.value;
   if (host) return host;
@@ -56,7 +89,7 @@ function remember(event, request, cookieName, password) {
     statusCode: 302,
     statusDescription: "Found",
     headers: {
-      location: { value: "https://" + hostName(event, request) + safePath(request.uri) },
+      location: { value: "https://" + hostName(event, request) + viewerPath(request.uri) },
       "cache-control": { value: "no-store" }
     },
     cookies: cookies
@@ -80,8 +113,8 @@ function denied() {
       + "<meta name=\"robots\" content=\"noindex\">"
       + "<title>PhiloScroll</title>"
       + "<style>"
-      + "html{background:#FDFBF7;color:#1F2937}"
-      + "@media (prefers-color-scheme: dark){html{background:#121824;color:#E5E7EB}}"
+      + "html{background:#ede4d3;color:#000000}"
+      + "@media (prefers-color-scheme: dark){html{background:#0d1014;color:#e5e7eb}}"
       + "body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Georgia,serif}"
       + "p{font-size:1.4rem;line-height:1.5;padding:1.5rem;text-align:center}"
       + "</style>"
